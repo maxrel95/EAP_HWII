@@ -146,4 +146,23 @@ crsp5 = pd.merge( crsp4, mom, how='left', on=['permno', 'jdate'] )
 df = pd.merge_ordered( crsp5, ccm2, how='left', on=[ 'permno', 'jdate' ], fill_method='ffill' )
 df[ 'beme' ] = df[ 'be' ]*1000 / df[ 'lag6_me' ]
 
+annual_df = df[ ['permno', 'date', 'jdate', 'datadate', 'shrcd', 'exchcd', 'siccd', 'retx', 'me',
+                 'lag6_me', 'reversal', 'mom', 'gat', 'GP', 'beme'] ]
+annual_df[ 'count' ] = annual_df.groupby( ['permno'] ).cumcount()
 
+nyse = annual_df[ ( annual_df['beme']>0 ) & ( annual_df['me']>0 ) & \
+             ( annual_df['count']>=1 ) & ( ( annual_df['shrcd']==10 ) | ( annual_df['shrcd']==11 ) )]
+
+nyse_sz = nyse.groupby( ['jdate'] )[ 'me' ].describe( percentiles=[ 0.25, 0.75 ] ).reset_index()
+nyse_sz = nyse_sz[ ['jdate','25%','75%'] ].rename( columns={ '25%':'sz25', '75%':'sz75' } )
+
+def sz_bucket( row ):
+    if row[ 'me' ]<=row[ 'sz25' ]:
+        value = 'S'
+    elif row[ 'me' ]<=row[ 'sz75' ]:
+        value ='R'
+    elif row[ 'me' ]>row[ 'sz75' ]:
+        value = 'B'
+    else:
+        value = ''    
+    return value
