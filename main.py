@@ -122,21 +122,34 @@ crsp2 = pd.merge(crsp1, crsp_summe, how='inner', on=[ 'jdate', 'permco' ] )
 
 # sort by permno and date and also drop duplicates
 crsp2 = crsp2.sort_values( by=['permno', 'jdate'] ).drop_duplicates()
+
+# lag 6 month the market cap
 me = crsp2[ [ 'permno', 'jdate', 'me'] ] 
 me[ 'jdate' ] = me[ 'jdate' ] + MonthEnd( 6 )
 me.rename( columns={ 'me': 'lag6_me'}, inplace=True )
 crsp3 = pd.merge( crsp2, me, how='left', on=[ 'permno', 'jdate' ] )
-#crsp2[ 'lag6_me' ] = crsp2.groupby( [ 'permno' ] )[ 'me' ].shift( 6 ) 
+
+reversal  = crsp2[ [ 'permno', 'jdate', 'retadj'] ]
+reversal[ 'jdate' ] = reversal[ 'jdate' ] + MonthEnd( 1 )
+reversal.rename( columns={ 'retadj': 'reversal'}, inplace=True )
+crsp4 = pd.merge( crsp3, reversal, how='left', on=['permno', 'jdate'] )
+
+mom = crsp2[ [ 'permno', 'jdate', 'retadj'] ]
+mom[ 'gross_ret' ] = 1 + mom[ 'retadj' ]
+mom[ 'mom' ] = mom.groupby( ['permno'] )[ 'gross_ret' ].rolling( window=11, closed='left' ).apply( 
+    lambda x: x.prod() ).reset_index( 0, drop=True )
+mom = mom[ ['permno', 'jdate', 'mom'] ]
+crsp5 = pd.merge( crsp4, mom, how='left', on=['permno', 'jdate'] )
 
 ## merged link and fundamental 
-df = pd.merge_ordered( crsp3, ccm2, how='left', on=[ 'permno', 'jdate' ], fill_method='ffill' )
+df = pd.merge_ordered( crsp5, ccm2, how='left', on=[ 'permno', 'jdate' ], fill_method='ffill' )
 df[ 'beme' ] = df[ 'be' ]*1000 / df[ 'lag6_me' ]
 
 bv = df.pivot_table( values='be', index='jdate', columns='permno' )
 me = df.pivot_table( values='me', index='jdate', columns='permno' )
 ret = df.pivot_table( values='retadj', index='jdate', columns='permno' )
 at = df.pivot_table( values='at', index='jdate', columns='permno' )
-gp = df.pivot_table( values='gp', index='jdate', columns='permno' )#
+gp = df.pivot_table( values='gp', index='jdate', columns='permno' )
 
 
 
