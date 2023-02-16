@@ -51,17 +51,17 @@ compustat_annual[ 'be' ] = compustat_annual[ 'seq' ]+compustat_annual[ 'txditc' 
 compustat_annual[ 'be' ] = np.where( compustat_annual[ 'be' ]>0, compustat_annual[ 'be' ], np.nan )
 
 compustat_annual[ 'gat' ] = compustat_annual.groupby( [ 'gvkey' ] )[ 'at' ].pct_change()
-compustat_annual[ 'GP' ] = compustat_annual[ 'gp'] / compustat_annual[ 'at' ]
+compustat_annual[ 'GP' ] = compustat_annual[ 'gp'] / compustat_annual.groupby( [ 'gvkey' ] )[ 'at' ].shift( 1 )
 
 # number of years in compustat_annualustat
 compustat_annual = compustat_annual.sort_values( by=[ 'gvkey','datadate' ] )
 
-ccm1 = pd.merge( compustat_annual[ [ 'gvkey', 'datadate', 'jdate', 'be', 'at', 'gp', 'gat', 'GP' ] ], link_table, how='left', on=['gvkey'] )
+ccm1 = pd.merge( compustat_annual[ [ 'gvkey', 'datadate', 'jdate', 'be', 'at', 'gp', 'gat', 'GP' ] ],
+         link_table, how='left', on=['gvkey'] )
 
 # set link date bounds
 ccm2 = ccm1[ ( ccm1[ 'jdate' ] >= ccm1[ 'linkdt' ] ) & ( ccm1[ 'jdate' ] <= ccm1[ 'linkenddt' ] ) ]
 ccm2 = ccm2[['gvkey','permno','datadate', 'jdate', 'be', 'at', 'gp', 'gat', 'GP' ]] 
-#ccm2[ 'jdate' ] = ccm2[ 'datadate' ] + MonthEnd( 0 )
 ccm2[ 'permno' ] = ccm2[ 'permno' ].astype( int )
 
 crsp_m = db.raw_sql("""
@@ -77,7 +77,8 @@ crsp_m = db.raw_sql("""
                       """, date_cols=['date']) 
 
 # change variable format to int
-crsp_m[ [ 'permco','permno','shrcd','exchcd', 'siccd' ] ] = crsp_m [ [ 'permco','permno','shrcd','exchcd', 'siccd' ] ].astype( int )
+crsp_m[ [ 'permco','permno','shrcd','exchcd', 'siccd' ] ] = crsp_m[ [ 'permco','permno','shrcd','exchcd',
+     'siccd' ] ].astype( int )
 
 # Line up date to be end of month
 crsp_m[ 'jdate' ] = crsp_m[ 'date' ] + MonthEnd( 0 )
@@ -92,12 +93,12 @@ dlret = db.raw_sql("""
 dlret.permno = dlret.permno.astype( int )
 dlret[ 'jdate' ] = dlret[ 'dlstdt' ] + MonthEnd( 0 )
 
-crsp = pd.merge(crsp_m, dlret, how='left',on=['permno','jdate'])
+crsp = pd.merge( crsp_m, dlret, how='left',on=['permno','jdate'] )
 crsp['dlret'] = crsp['dlret'].fillna(0)
 crsp['ret'] = crsp['ret'].fillna(0)
 
 # retadj factors in the delisting returns
-crsp['retadj'] = (1+crsp['ret'])*(1+crsp['dlret'])-1
+crsp['retadj'] = ( 1+crsp['ret'])*(1+crsp['dlret'] )-1
 
 # calculate market equity
 crsp[ 'me' ] = crsp[ 'prc' ].abs()*crsp[ 'shrout' ] 
@@ -106,7 +107,7 @@ crsp = crsp.sort_values(by=['jdate', 'permco', 'me'])
 
 ### Aggregate Market Cap ###
 # sum of me across different permno belonging to same permco a given date
-crsp_summe = crsp.groupby(['jdate','permco'])['me'].sum().reset_index()
+crsp_summe = crsp.groupby(['jdate','permco'])[ 'me' ].sum().reset_index()
 
 # largest mktcap within a permco/date
 crsp_maxme = crsp.groupby( [ 'jdate', 'permco' ] )[ 'me' ].max().reset_index()
@@ -134,23 +135,15 @@ reversal[ 'jdate' ] = reversal[ 'jdate' ] + MonthEnd( 1 )
 reversal.rename( columns={ 'retadj': 'reversal'}, inplace=True )
 crsp4 = pd.merge( crsp3, reversal, how='left', on=['permno', 'jdate'] )
 
-mom = crsp2[ [ 'permno', 'jdate', 'retadj'] ]
-mom[ 'gross_ret' ] = 1 + mom[ 'retadj' ]
+mom = crsp2[ [ 'permno', 'jdate', 'ret'] ]
+mom[ 'gross_ret' ] = 1 + mom[ 'ret' ]
 mom[ 'mom' ] = mom.groupby( ['permno'] )[ 'gross_ret' ].rolling( window=11, closed='left' ).apply( 
-    lambda x: x.prod() ).reset_index( 0, drop=True )
-mom = mom[ ['permno', 'jdate', 'mom'] ]
+    lambda x: x.prod() ).reset_index( 0, drop=True ) - 1
+mom = mom[ ['permno', 'jdate', 'ret', 'mom'] ]
 crsp5 = pd.merge( crsp4, mom, how='left', on=['permno', 'jdate'] )
 
 ## merged link and fundamental 
 df = pd.merge_ordered( crsp5, ccm2, how='left', on=[ 'permno', 'jdate' ], fill_method='ffill' )
 df[ 'beme' ] = df[ 'be' ]*1000 / df[ 'lag6_me' ]
-
-bv = df.pivot_table( values='be', index='jdate', columns='permno' )
-me = df.pivot_table( values='me', index='jdate', columns='permno' )
-ret = df.pivot_table( values='retadj', index='jdate', columns='permno' )
-at = df.pivot_table( values='at', index='jdate', columns='permno' )
-gp = df.pivot_table( values='gp', index='jdate', columns='permno' )
-
-
 
 
