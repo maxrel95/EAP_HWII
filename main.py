@@ -14,20 +14,16 @@ import statsmodels.api as sm
 db = wrds.Connection( wrds_username = 'maxrel95' )
 
 # Annual fundamental data request
-compustat_annual = db.raw_sql(
-    """
+compustat_annual = db.raw_sql("""
                     select gvkey, datadate, at, pstkl, txditc,
                     pstkrv, seq, pstk, gp
-                    from compustat_annual.funda
+                    from comp.funda
                     where indfmt='INDL' 
                     and datafmt='STD'
                     and popsrc='D'
                     and consol='C'
-                    and datadate >= '01/01/1959'
-                    """,
-                     date_cols=['datadate']
-)
-
+                    and datadate >= '01/01/2015'
+                    """, date_cols=['datadate'])
 # Link table
 link_table = db.raw_sql("""
                   select gvkey, lpermno as permno, linktype, linkprim, 
@@ -40,21 +36,108 @@ link_table = db.raw_sql("""
 # if linkenddt is missing then set to today date
 link_table[ 'linkenddt' ] = link_table[ 'linkenddt' ].fillna( pd.to_datetime( 'today' ) )
 
-compustat_annual[ 'year' ] = compustat_annual[ 'datadate' ].dt.year # creat a col with year only 
+compustat_annual[ 'jdate' ] = compustat_annual[ 'datadate' ] + MonthEnd( 6 ) # creat a col with year only 
 
 # create preferrerd stock
 compustat_annual[ 'ps' ] = np.where( compustat_annual[ 'pstkrv' ].isnull(),
  compustat_annual[ 'pstkl' ], compustat_annual[ 'pstkrv' ] )
 compustat_annual[ 'ps' ] = np.where( compustat_annual[ 'ps' ].isnull(),compustat_annual[ 'pstk' ],
- compustat_annual['ps'])
+ compustat_annual[ 'ps' ] )
 compustat_annual[ 'ps' ] = np.where( compustat_annual[ 'ps' ].isnull(), 0, compustat_annual[ 'ps' ])
 compustat_annual[ 'txditc' ] = compustat_annual[ 'txditc' ].fillna(0)
 
 # create book equity
-compustat_annual[ 'be' ] = compustat_annual['seq']+compustat_annual['txditc']-compustat_annual['ps']
+compustat_annual[ 'be' ] = compustat_annual[ 'seq' ]+compustat_annual[ 'txditc' ]-compustat_annual[ 'ps' ]
 compustat_annual[ 'be' ] = np.where( compustat_annual[ 'be' ]>0, compustat_annual[ 'be' ], np.nan )
+
+compustat_annual[ 'gat' ] = compustat_annual.groupby( [ 'gvkey' ] )[ 'at' ].pct_change()
+compustat_annual[ 'GP' ] = compustat_annual[ 'gp'] / compustat_annual[ 'at' ]
 
 # number of years in compustat_annualustat
 compustat_annual = compustat_annual.sort_values( by=[ 'gvkey','datadate' ] )
-compustat_annual[ 'count' ] = compustat_annual.groupby([ 'gvkey' ] ).cumcount()
+
+ccm1 = pd.merge( compustat_annual[ [ 'gvkey', 'datadate', 'jdate', 'be', 'at', 'gp', 'gat', 'GP' ] ], link_table, how='left', on=['gvkey'] )
+
+# set link date bounds
+ccm2 = ccm1[ ( ccm1[ 'jdate' ] >= ccm1[ 'linkdt' ] ) & ( ccm1[ 'jdate' ] <= ccm1[ 'linkenddt' ] ) ]
+ccm2 = ccm2[['gvkey','permno','datadate', 'jdate', 'be', 'at', 'gp', 'gat', 'GP' ]] 
+#ccm2[ 'jdate' ] = ccm2[ 'datadate' ] + MonthEnd( 0 )
+ccm2[ 'permno' ] = ccm2[ 'permno' ].astype( int )
+
+crsp_m = db.raw_sql("""
+                      select a.permno, a.permco, a.date, b.shrcd, b.exchcd,
+                      a.ret, a.retx, a.shrout, a.prc, b.siccd
+                      from crsp.msf as a
+                      left join crsp.msenames as b
+                      on a.permno=b.permno
+                      and b.namedt<=a.date
+                      and a.date<=b.nameendt
+                      where a.date between '01/01/2015' and '12/31/2021'
+                      and b.exchcd between 1 and 3
+                      """, date_cols=['date']) 
+
+# change variable format to int
+crsp_m[ [ 'permco','permno','shrcd','exchcd', 'siccd' ] ] = crsp_m [ [ 'permco','permno','shrcd','exchcd', 'siccd' ] ].astype( int )
+
+# Line up date to be end of month
+crsp_m[ 'jdate' ] = crsp_m[ 'date' ] + MonthEnd( 0 )
+
+# add delisting return
+#table monthly stock event delisting
+dlret = db.raw_sql("""
+                     select permno, dlret, dlstdt 
+                     from crsp.msedelist
+                     """, date_cols=['dlstdt'])
+
+dlret.permno = dlret.permno.astype( int )
+dlret[ 'jdate' ] = dlret[ 'dlstdt' ] + MonthEnd( 0 )
+
+crsp = pd.merge(crsp_m, dlret, how='left',on=['permno','jdate'])
+crsp['dlret'] = crsp['dlret'].fillna(0)
+crsp['ret'] = crsp['ret'].fillna(0)
+
+# retadj factors in the delisting returns
+crsp['retadj'] = (1+crsp['ret'])*(1+crsp['dlret'])-1
+
+# calculate market equity
+crsp[ 'me' ] = crsp[ 'prc' ].abs()*crsp[ 'shrout' ] 
+crsp = crsp.drop( [ 'dlret', 'dlstdt', 'prc', 'shrout' ], axis=1)
+crsp = crsp.sort_values(by=['jdate', 'permco', 'me'])
+
+### Aggregate Market Cap ###
+# sum of me across different permno belonging to same permco a given date
+crsp_summe = crsp.groupby(['jdate','permco'])['me'].sum().reset_index()
+
+# largest mktcap within a permco/date
+crsp_maxme = crsp.groupby( [ 'jdate', 'permco' ] )[ 'me' ].max().reset_index()
+
+# join by jdate/maxme to find the permno
+crsp1 = pd.merge(crsp, crsp_maxme, how='inner', on=['jdate','permco','me'])
+
+# drop me column and replace with the sum me
+crsp1 = crsp1.drop(['me'], axis=1)
+
+# join with sum of me to get the correct market cap info
+crsp2 = pd.merge(crsp1, crsp_summe, how='inner', on=[ 'jdate', 'permco' ] )
+
+# sort by permno and date and also drop duplicates
+crsp2 = crsp2.sort_values( by=['permno', 'jdate'] ).drop_duplicates()
+me = crsp2[ [ 'permno', 'jdate', 'me'] ] 
+me[ 'jdate' ] = me[ 'jdate' ] + MonthEnd( 6 )
+me.rename( columns={ 'me': 'lag6_me'}, inplace=True )
+crsp3 = pd.merge( crsp2, me, how='left', on=[ 'permno', 'jdate' ] )
+#crsp2[ 'lag6_me' ] = crsp2.groupby( [ 'permno' ] )[ 'me' ].shift( 6 ) 
+
+## merged link and fundamental 
+df = pd.merge_ordered( crsp3, ccm2, how='left', on=[ 'permno', 'jdate' ], fill_method='ffill' )
+df[ 'beme' ] = df[ 'be' ]*1000 / df[ 'lag6_me' ]
+
+bv = df.pivot_table( values='be', index='jdate', columns='permno' )
+me = df.pivot_table( values='me', index='jdate', columns='permno' )
+ret = df.pivot_table( values='retadj', index='jdate', columns='permno' )
+at = df.pivot_table( values='at', index='jdate', columns='permno' )
+gp = df.pivot_table( values='gp', index='jdate', columns='permno' )#
+
+
+
 
