@@ -229,6 +229,15 @@ annual_df_micro = annual_df[ annual_df[ 'szport' ] == 'Micro' ]
 annual_df_noFinUt = annual_df[ ( ( annual_df['siccd'] > 4900 ) & ( annual_df['siccd'] <= 4949 ) ) |
                                ( ( annual_df['siccd'] > 6000 ) & ( annual_df['siccd'] <= 6799 ) ) ]
 
+annual_df = annual_df[ ['permno', 'date', 'jdate', 'shrcd', 'exchcd', 'siccd', 'retadj', 'me', 'beme', 'reversal', 'mom', 'gat', 'GP'] ]
+annual_df_large = annual_df_large[ ['permno', 'date', 'jdate', 'shrcd', 'exchcd', 'siccd', 'retadj', 'me', 'beme',
+                                    'reversal', 'mom', 'gat', 'GP'] ]
+annual_df_small = annual_df_small[ ['permno', 'date', 'jdate', 'shrcd', 'exchcd', 'siccd', 'retadj', 'me', 'beme',
+                                    'reversal', 'mom', 'gat', 'GP'] ]
+annual_df_micro = annual_df_micro[ ['permno', 'date', 'jdate', 'shrcd', 'exchcd', 'siccd', 'retadj', 'me', 'beme',
+                                    'reversal', 'mom', 'gat', 'GP'] ]
+annual_df_noFinUt = annual_df_noFinUt[ ['permno', 'date', 'jdate', 'shrcd', 'exchcd', 'siccd', 'retadj', 'me', 'beme',
+                                        'reversal', 'mom', 'gat', 'GP'] ]
 
 # quarterly data
 def aggregate_quarter(series, df):
