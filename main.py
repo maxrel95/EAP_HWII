@@ -146,7 +146,6 @@ mom = mom[ ['permno', 'jdate', 'ret', 'mom'] ]
 crsp5 = pd.merge( crsp4, mom, how='left', on=['permno', 'jdate'] )
 
 ## merged link and fundamental 
-df = pd.merge_ordered( crsp5, ccm2, how='left', on=[ 'permno', 'jdate' ], fill_method='ffill' )
 df[ 'beme' ] = df[ 'be' ]*1000 / df[ 'lag6_me' ]
 
 annual_df = df[ ['permno', 'date', 'jdate', 'datadate', 'shrcd', 'exchcd', 'siccd', 'retx', 'me',
@@ -177,6 +176,12 @@ annual_df['szport'] = np.where( (annual_df['beme']>0) & (annual_df['me']>0) & (a
                                  annual_df.apply(sz_bucket, axis=1), '')
 annual_df.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
 
+# winsorized the data 
+bm_trim = nyse.groupby( 'jdate' )[ 'beme' ].describe( percentiles=[ .01, .99 ] ).reset_index()
+bm_trim = bm_trim[ ['jdate','1%','99%'] ]
+
+annual_df[ 'beme2' ] = np.where( annual_df[ 'beme' ]>=bm_trim['99%'], bm_trim['99%'],  annual_df[ 'beme' ])
+com = annual_df[['permno', 'jdate', 'beme', 'beme2']]
 annual_df_large = annual_df[ annual_df[ 'szport' ] == 'Large' ]
 annual_df_small = annual_df[ annual_df[ 'szport' ] == 'Small' ]
 annual_df_micro = annual_df[ annual_df[ 'szport' ] == 'Micro' ]
