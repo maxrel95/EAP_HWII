@@ -181,3 +181,17 @@ annual_df_micro = annual_df[ annual_df[ 'szport' ] == 'Micro' ]
 
 annual_df_noFinUt = annual_df[ ( ( annual_df['siccd'] > 4900) & ( annual_df['siccd'] <= 4949 ) ) |
                          ( ( annual_df['siccd'] > 6000 ) & ( annual_df['siccd'] <= 6799 ) ) ]
+
+
+# quarterly data
+
+compustat_q = db.raw_sql("""
+                    select gvkey, datadate, atq, pstkq, txditcq,
+                    seq1, revtq4, cogsq4,
+                    from comp.funda
+                    where indfmt='INDL' 
+                    and datafmt='STD'
+                    and popsrc='D'
+                    and consol='C'
+                    and datadate >= '01/01/2015'
+                    """, date_cols=['datadate'])
