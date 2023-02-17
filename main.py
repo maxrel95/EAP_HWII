@@ -175,5 +175,9 @@ def sz_bucket( row ):
 annual_df['szport'] = np.where( (annual_df['beme']>0) & (annual_df['me']>0) & (annual_df['count']>=1), annual_df.apply(sz_bucket, axis=1), '')
 annual_df.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
 
+annual_df_large = annual_df[ annual_df[ 'szport' ] == 'Large' ]
+annual_df_small = annual_df[ annual_df[ 'szport' ] == 'Small' ]
+annual_df_micro = annual_df[ annual_df[ 'szport' ] == 'Micro' ]
+
 annual_df_noFinUt = annual_df[ ( ( annual_df['siccd'] > 4900) & ( annual_df['siccd'] <= 4949 ) ) |
                          ( ( annual_df['siccd'] > 6000 ) & ( annual_df['siccd'] <= 6799 ) ) ]
