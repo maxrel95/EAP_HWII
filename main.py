@@ -150,7 +150,7 @@ df = pd.merge_ordered( crsp5, ccm2, how='left', on=[ 'permno', 'jdate' ] ) #, fi
 df[ 'beme' ] = df[ 'be' ]*1000 / df[ 'lag6_me' ]
 df = df.groupby( 'permno', as_index=True ).apply( lambda x: x.fillna( method='ffill', limit=11 ) )
 
-annual_df = df[ ['permno', 'date', 'jdate', 'datadate', 'shrcd', 'exchcd', 'siccd', 'retx', 'me',
+annual_df = df[ ['permno', 'date', 'jdate', 'datadate', 'shrcd', 'exchcd', 'siccd', 'retadj', 'me',
                  'lag6_me', 'reversal', 'mom', 'gat', 'GP', 'beme'] ]
 annual_df[ 'count' ] = annual_df.groupby( ['permno'] ).cumcount()
 
