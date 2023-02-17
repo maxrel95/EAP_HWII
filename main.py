@@ -49,6 +49,8 @@ compustat_annual[ 'txditc' ] = compustat_annual[ 'txditc' ].fillna(0)
 # create book equity
 compustat_annual[ 'be' ] = compustat_annual[ 'seq' ]+compustat_annual[ 'txditc' ]-compustat_annual[ 'ps' ]
 compustat_annual[ 'be' ] = np.where( compustat_annual[ 'be' ]>0, compustat_annual[ 'be' ], np.nan )
+compustat_annual[ 'at' ] = np.where( compustat_annual['at'] == 0, np.nan, compustat_annual['at'] )
+
 
 compustat_annual[ 'gat' ] = compustat_annual.groupby( [ 'gvkey' ] )[ 'at' ].pct_change()
 compustat_annual[ 'GP' ] = compustat_annual[ 'gp'] / compustat_annual.groupby( [ 'gvkey' ] )[ 'at' ].shift( 1 )
@@ -130,9 +132,9 @@ me[ 'jdate' ] = me[ 'jdate' ] + MonthEnd( 6 )
 me.rename( columns={ 'me': 'lag6_me'}, inplace=True )
 crsp3 = pd.merge( crsp2, me, how='left', on=[ 'permno', 'jdate' ] )
 
-reversal  = crsp2[ [ 'permno', 'jdate', 'retadj'] ]
+reversal  = crsp2[ [ 'permno', 'jdate', 'ret'] ]
 reversal[ 'jdate' ] = reversal[ 'jdate' ] + MonthEnd( 1 )
-reversal.rename( columns={ 'retadj': 'reversal'}, inplace=True )
+reversal.rename( columns={ 'ret': 'reversal'}, inplace=True )
 crsp4 = pd.merge( crsp3, reversal, how='left', on=['permno', 'jdate'] )
 
 mom = crsp2[ [ 'permno', 'jdate', 'ret'] ]
@@ -153,16 +155,25 @@ annual_df[ 'count' ] = annual_df.groupby( ['permno'] ).cumcount()
 nyse = annual_df[ ( annual_df['beme']>0 ) & ( annual_df['me']>0 ) & \
              ( annual_df['count']>=1 ) & ( ( annual_df['shrcd']==10 ) | ( annual_df['shrcd']==11 ) )]
 
-nyse_sz = nyse.groupby( ['jdate'] )[ 'me' ].describe( percentiles=[ 0.25, 0.75 ] ).reset_index()
-nyse_sz = nyse_sz[ ['jdate','25%','75%'] ].rename( columns={ '25%':'sz25', '75%':'sz75' } )
+nyse_sz = nyse.groupby( ['jdate'] )[ 'me' ].describe( percentiles=[ 0.3, 0.7 ] ).reset_index()
+nyse_sz = nyse_sz[ ['jdate','30%','70%'] ].rename( columns={ '30%':'sz30', '70%':'sz70' } )
+
+annual_df = pd.merge( annual_df, nyse_sz, how='inner', on=[ 'jdate'] )
 
 def sz_bucket( row ):
-    if row[ 'me' ]<=row[ 'sz25' ]:
-        value = 'S'
-    elif row[ 'me' ]<=row[ 'sz75' ]:
-        value ='R'
-    elif row[ 'me' ]>row[ 'sz75' ]:
-        value = 'B'
+    if row[ 'me' ]<=row[ 'sz30' ]:
+        value = 'Micro'
+    elif row[ 'me' ]<=row[ 'sz70' ]:
+        value ='Small'
+    elif row[ 'me' ]>row[ 'sz70' ]:
+        value = 'Large'
     else:
         value = ''    
     return value
+
+
+annual_df['szport'] = np.where( (annual_df['beme']>0) & (annual_df['me']>0) & (annual_df['count']>=1), annual_df.apply(sz_bucket, axis=1), '')
+annual_df.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
+
+annual_df_noFinUt = annual_df[ ( ( annual_df['siccd'] > 4900) & ( annual_df['siccd'] <= 4949 ) ) |
+                         ( ( annual_df['siccd'] > 6000 ) & ( annual_df['siccd'] <= 6799 ) ) ]
