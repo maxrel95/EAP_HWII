@@ -146,7 +146,9 @@ mom = mom[ ['permno', 'jdate', 'ret', 'mom'] ]
 crsp5 = pd.merge( crsp4, mom, how='left', on=['permno', 'jdate'] )
 
 ## merged link and fundamental 
+df = pd.merge_ordered( crsp5, ccm2, how='left', on=[ 'permno', 'jdate' ] ) #, fill_method='ffill' )
 df[ 'beme' ] = df[ 'be' ]*1000 / df[ 'lag6_me' ]
+df = df.groupby( 'permno', as_index=True ).apply( lambda x: x.fillna( method='ffill', limit=11 ) )
 
 annual_df = df[ ['permno', 'date', 'jdate', 'datadate', 'shrcd', 'exchcd', 'siccd', 'retx', 'me',
                  'lag6_me', 'reversal', 'mom', 'gat', 'GP', 'beme'] ]
@@ -257,8 +259,9 @@ crsp4_q = pd.merge( crsp3_q, reversal, how='left', on=['permno', 'jdate'] )
 crsp5_q = pd.merge( crsp4_q, mom, how='left', on=['permno', 'jdate'] )
 
 ## merged link and fundamental 
-df_q = pd.merge_ordered( crsp5_q, ccm2_q, how='left', on=[ 'permno', 'jdate' ], fill_method='ffill' )
+df_q = pd.merge_ordered( crsp5_q, ccm2_q, how='left', on=[ 'permno', 'jdate' ] ) #, fill_method='ffill' )
 df_q[ 'beme' ] = df_q[ 'beq_lag4' ]*1000 / df_q[ 'lag4_me' ]
+df_q = df_q.groupby( 'permno', as_index=True ).apply( lambda x: x.fillna( method='ffill', limit=2 ) )
 
 quarter_df = df_q[ ['permno', 'date', 'jdate', 'datadate', 'shrcd', 'exchcd', 'siccd', 'retx', 'me',
                    'lag4_me', 'reversal', 'mom', 'gat', 'GP', 'beme' ] ]
