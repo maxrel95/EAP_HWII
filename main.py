@@ -182,8 +182,46 @@ annual_df.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
 bm_trim = nyse.groupby( 'jdate' )[ 'beme' ].describe( percentiles=[ .01, .99 ] ).reset_index()
 bm_trim = bm_trim[ ['jdate','1%','99%'] ]
 
-annual_df[ 'beme2' ] = np.where( annual_df[ 'beme' ]>=bm_trim['99%'], bm_trim['99%'],  annual_df[ 'beme' ])
-com = annual_df[['permno', 'jdate', 'beme', 'beme2']]
+me_trim = nyse.groupby( 'jdate' )[ 'me' ].describe( percentiles=[ .01, .99 ] ).reset_index()
+me_trim = me_trim[ ['jdate','1%','99%'] ].rename( columns={ '1%': 'me_1%', '99%': 'me_99%'} )
+
+mom_trim = nyse.groupby( 'jdate' )[ 'mom' ].describe( percentiles=[ .01, .99 ] ).reset_index()
+mom_trim = mom_trim[ ['jdate','1%','99%'] ].rename( columns={ '1%': 'mom_1%', '99%': 'mom_99%'})
+
+rev_trim = nyse.groupby( 'jdate' )[ 'reversal' ].describe( percentiles=[ .01, .99 ] ).reset_index()
+rev_trim = rev_trim[ ['jdate','1%','99%'] ].rename( columns={ '1%': 'rev_1%', '99%': 'rev_99%'})
+
+gp_trim = nyse.groupby( 'jdate' )[ 'GP' ].describe( percentiles=[ .01, .99 ] ).reset_index()
+gp_trim = gp_trim[ ['jdate','1%','99%'] ].rename( columns={ '1%': 'gp_1%', '99%': 'gp_99%'})
+
+ag_trim = nyse.groupby( 'jdate' )[ 'gat' ].describe( percentiles=[ .01, .99 ] ).reset_index()
+ag_trim = ag_trim[ ['jdate','1%','99%'] ].rename( columns={ '1%': 'ag_1%', '99%': 'ag_99%'})
+
+annual_df = pd.merge( annual_df, bm_trim, how='left', on='jdate' )
+annual_df = pd.merge( annual_df, me_trim, how='left', on='jdate' )
+annual_df = pd.merge( annual_df, mom_trim, how='left', on='jdate' )
+annual_df = pd.merge( annual_df, rev_trim, how='left', on='jdate' )
+annual_df = pd.merge( annual_df, gp_trim, how='left', on='jdate' )
+annual_df = pd.merge( annual_df, ag_trim, how='left', on='jdate' )
+
+annual_df[ 'beme' ] = np.where( annual_df[ 'beme' ] >= annual_df['99%'], annual_df['99%'],
+                                np.where( annual_df[ 'beme' ] <= annual_df['1%'],  annual_df['1%'], annual_df[ 'beme' ]) )
+
+annual_df[ 'me' ] = np.where( annual_df[ 'me' ] >= annual_df['me_99%'], annual_df['me_99%'],
+                              np.where( annual_df[ 'me' ] <= annual_df['me_1%'],  annual_df['me_1%'], annual_df[ 'me' ]) )
+
+annual_df[ 'mom' ] = np.where( annual_df[ 'mom' ] >= annual_df['mom_99%'], annual_df['mom_99%'],
+                                np.where( annual_df[ 'mom' ] <= annual_df['mom_1%'],  annual_df['mom_1%'], annual_df[ 'mom' ]) )
+
+annual_df[ 'reversal' ] = np.where( annual_df[ 'reversal' ] >= annual_df['rev_99%'], annual_df['rev_99%'],
+                                np.where( annual_df[ 'reversal' ] <= annual_df['rev_1%'],  annual_df['rev_1%'], annual_df[ 'reversal' ]) )
+
+annual_df[ 'GP' ] = np.where( annual_df[ 'GP' ] >= annual_df['gp_99%'], annual_df['gp_99%'],
+                                np.where( annual_df[ 'GP' ] <= annual_df['gp_1%'],  annual_df['gp_1%'], annual_df[ 'GP' ]) )
+
+annual_df[ 'gat' ] = np.where( annual_df[ 'gat' ] >= annual_df['ag_99%'], annual_df['ag_99%'],
+                                np.where( annual_df[ 'gat' ] <= annual_df['ag_1%'],  annual_df['ag_1%'], annual_df[ 'gat' ]) )
+
 annual_df_large = annual_df[ annual_df[ 'szport' ] == 'Large' ]
 annual_df_small = annual_df[ annual_df[ 'szport' ] == 'Small' ]
 annual_df_micro = annual_df[ annual_df[ 'szport' ] == 'Micro' ]
@@ -251,7 +289,7 @@ ccm2_q[ 'permno' ] = ccm2_q[ 'permno' ].astype( int )
 # lag 6 month the market cap
 me_q = crsp2[ [ 'permno', 'jdate', 'me'] ] 
 me_q[ 'jdate' ] = me_q[ 'jdate' ] + MonthEnd( 4 )
-me_q.rename( columns={ 'me': 'lag4_me'}, inplace=True )
+me_q.rename( columns={ 'me': 'lag4_me' }, inplace=True )
 crsp3_q = pd.merge( crsp2, me_q, how='left', on=[ 'permno', 'jdate' ] )
 
 crsp4_q = pd.merge( crsp3_q, reversal, how='left', on=['permno', 'jdate'] )
