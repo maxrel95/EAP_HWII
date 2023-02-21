@@ -43,7 +43,7 @@ def trim( x ):
     bm_trim = nyse.groupby( 'jdate' )[ 'logbm' ].describe( percentiles=[ .01, .99 ] ).reset_index()
     bm_trim = bm_trim[ ['jdate','1%','99%'] ]
 
-    me_trim = nyse.groupby( 'jdate' )[ 'logme1' ].describe( percentiles=[ .01, .99 ] ).reset_index()
+    me_trim = nyse.groupby( 'jdate' )[ 'logme' ].describe( percentiles=[ .01, .99 ] ).reset_index()
     me_trim = me_trim[ ['jdate','1%','99%'] ].rename( columns={ '1%': 'me_1%', '99%': 'me_99%'} )
 
     mom_trim = nyse.groupby( 'jdate' )[ 'mom' ].describe( percentiles=[ .01, .99 ] ).reset_index()
@@ -69,7 +69,7 @@ def trim( x ):
                                 np.where( x[ 'logbm' ] <= x['1%'],  x['1%'],
                                           x[ 'logbm' ]) )
 
-    x[ 'logme1' ] = np.where( x[ 'logme1' ] >= x['me_99%'], x['me_99%'],
+    x[ 'logme' ] = np.where( x[ 'logme' ] >= x['me_99%'], x['me_99%'],
                               np.where( x[ 'logme' ] <= x['me_1%'],  
                                         x['me_1%'], x[ 'logme' ]) )
 

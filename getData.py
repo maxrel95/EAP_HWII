@@ -180,7 +180,7 @@ me.rename( columns={ 'me': 'lag6_me'}, inplace=True )
 crsp_mom2 = pd.merge( crsp_mom1, me, how='left', on=[ 'permno', 'jdate' ] )
 
 me4 = crsp_mom[ [ 'permno', 'jdate', 'me'] ] 
-me4[ 'jdate' ] = me4[ 'jdate' ] + MonthEnd( 6 )
+me4[ 'jdate' ] = me4[ 'jdate' ] + MonthEnd( 4 )
 me4.rename( columns={ 'me': 'lag4_me'}, inplace=True )
 crsp_mom2 = pd.merge( crsp_mom2, me4, how='left', on=[ 'permno', 'jdate' ] )
 
@@ -399,9 +399,89 @@ data_rawq['beq'] = np.where(data_rawq['seqq']>0, data_rawq['seqq']+data_rawq['tx
 data_rawq['beq'] = np.where(data_rawq['beq']<=0, np.nan, data_rawq['beq'])
 
 data_rawq['atq_l4'] = data_rawq.groupby(['permno'])['atq'].shift(4)
-data_rawq['agr'] = (data_rawq['atq']-data_rawq['atq_l4'])/data_rawq['atq_l4']
+data_rawq['gat'] = (data_rawq['atq']-data_rawq['atq_l4'])/data_rawq['atq_l4']
 
 data_rawq['revtq4'] = aggregate_quarter( 'revtq', data_rawq )
 data_rawq['cogsq4'] = aggregate_quarter( 'cogsq', data_rawq )
-data_rawq['gma'] = (data_rawq['revtq']-data_rawq['cogsq'])/data_rawq['atq_l4']
+data_rawq['GP'] = (data_rawq['revtq']-data_rawq['cogsq'])/data_rawq['atq_l4']
+
+data_rawq = data_rawq.drop( [ 'date', 'ret', 'retx', 'me' ], axis=1 )
+data_rawq = pd.merge( crsp_mom2, data_rawq.drop_duplicates(subset=[ 'permno', 'jdate' ]), how='left', on=['permno', 'jdate'] )
+
+data_rawq = data_rawq.groupby( 'permno', as_index=True ).apply( lambda x: x.fillna( method='ffill', limit=2 ) )
+
+data_rawq = data_rawq[((data_rawq['exchcd'] == 1) | (data_rawq['exchcd'] == 2) | (data_rawq['exchcd'] == 3)) &
+         ((data_rawq['shrcd'] == 10) | (data_rawq['shrcd'] == 11)) ]
+
+data_rawq[ 'beme' ] = data_rawq[ 'beq' ] / data_rawq[ 'lag4_me' ]
+data_rawq[ 'logbm' ] = np.log( data_rawq[ 'beme' ] )
+data_rawq[ 'logme' ] = np.log( data_rawq[ 'me' ] )
+data_rawq.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
+
+quarterly_df = data_rawq[
+    [ 'permno', 'date', 'jdate', 'datadate', 'shrcd', 'exchcd', 'siccd', 'retadj', 'me', 'logme',
+      'reversal', 'mom', 'gat', 'GP', 'beme', 'logbm'
+    ]
+]
+quarterly_df[ 'count' ] = quarterly_df.groupby( ['permno'] ).cumcount()
+
+# filter dataset
+# size
+nyse_q = quarterly_df[ (quarterly_df['exchcd']==1) & ( quarterly_df['beme']>0 ) & ( quarterly_df['me']>0 ) & \
+             ( quarterly_df['count']>=1 ) & ( ( quarterly_df['shrcd']==10 ) | ( quarterly_df['shrcd']==11 ) )]
+
+nyse_sz_q = nyse_q.groupby( ['jdate'] )[ 'logme' ].describe( percentiles=[ 0.2, 0.5 ] ).reset_index()
+nyse_sz_q = nyse_sz_q[ ['jdate','20%','50%'] ].rename( columns={ '20%':'sz20', '50%':'sz50' } )
+
+quarterly_df = pd.merge( quarterly_df, nyse_sz_q, how='inner', on=[ 'jdate'] )
+
+quarterly_df['szport'] = np.where( (quarterly_df['beme']>0) & (quarterly_df['me']>0) & (quarterly_df['count']>=1),
+                                 quarterly_df.apply(sz_bucket, axis=1), '')
+quarterly_df.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
+
+
+quarterly_df[ 'retadj_l1' ] = quarterly_df.groupby( 'permno' )[ 'retadj' ].shift( -1 )
+quarterly_df = quarterly_df[ ( quarterly_df['jdate']>='1963-07-31') ]
+
+quarterly_df_noFin = quarterly_df[ ( ( quarterly_df['siccd'] < 6000 ) | ( quarterly_df['siccd'] > 6999 ) ) &
+                             (~(quarterly_df[ 'szport' ] == 'Micro')) ]
+
+quarterly_df_trim = trim( quarterly_df )
+quarterly_df_noFin_trim = trim( quarterly_df_noFin )
+
+# benchmark
+benchmark_q = quarterly_df_noFin_trim[ ( quarterly_df_noFin_trim['jdate']>='1963-07-31') &  (quarterly_df_noFin_trim['jdate']<='2013-12-31') ]
+benchmark_q = benchmark_q.dropna( subset=['GP', 'logbm', 'reversal', 'mom', 'retadj_l1'] )
+quarterly_df_noFin_trim.dropna( subset=['GP', 'logbm', 'reversal', 'mom', 'retadj_l1'] )[ ['GP', 'logbm',
+             'reversal', 'mom']].describe(percentiles=[ .01, .25, .5, .75, .99 ]).T.round(3)
+benchmark_q = pd.merge( benchmark_q, _ff, how='left', on='jdate' )
+benchmark_q[ 'er' ] = benchmark_q[ 'retadj_l1' ] - benchmark_q[ 'rfl1' ]
+aa = benchmark_q.groupby( 'permno', as_index=False ).apply( ff3model )
+bb = benchmark_q.groupby( 'permno', as_index=False ).apply( ff6model )
+benchmark_q = pd.merge( benchmark_q, aa, how='inner', on=['permno', 'jdate'] )
+benchmark_q = pd.merge( benchmark_q, bb, how='inner', on=['permno', 'jdate'] )
+benchmark_q.sort_values( by=['permno', 'jdate'], inplace=True )
+benchmark_q.to_csv('Data/benchmark2_q.csv')
+
+# all data
+stats_df_q = quarterly_df_trim.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
+
+stats_all_q = stats_df_q[ ['GP', 'gat', 'logbm', 'logme', 'reversal', 'mom']].describe( 
+    percentiles=[ .01, .25, .5, .75, .99 ]).T.round( 3 ).drop('count', axis=1)
+corr_df_pearson_q = stats_df_q[ ['GP', 'gat', 'logbm', 'logme', 'reversal', 'mom'] ].corr().round( 3 )
+corr_df_spearman_q = stats_df_q[ ['GP', 'gat', 'logbm', 'logme', 'reversal', 'mom'] ].corr( method='spearman' ).round( 3 )
+stats_all_q.to_latex( 'results/statistics_q.tex' )
+corr_df_pearson_q.to_latex( 'results/pearsoncorr_q.tex' )
+corr_df_spearman_q.to_latex( 'results/spearmancorr_q.tex' )
+
+# export
+all_df_q = quarterly_df_trim.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
+all_df_q = pd.merge( all_df_q, _ff, how='left', on='jdate' )
+all_df_q[ 'er' ] = all_df_q[ 'retadj_l1' ] - all_df_q[ 'rfl1' ]
+aa = all_df_q.groupby( 'permno', as_index=False ).apply( ff3model )
+bb = all_df_q.groupby( 'permno', as_index=False ).apply( ff6model )
+all_df_q = pd.merge( all_df_q, aa, how='inner', on=['permno', 'jdate'] )
+all_df_q = pd.merge( all_df_q, bb, how='inner', on=['permno', 'jdate'] )
+all_df_q.sort_values( by=['permno', 'jdate'], inplace=True )
+all_df_q.to_csv( 'Data/all_df_q.csv' )
 
