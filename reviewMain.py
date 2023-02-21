@@ -18,7 +18,7 @@ db = wrds.Connection( wrds_username = 'maxrel95' )
 # Annual fundamental data request
 compustat_annual = db.raw_sql("""
                     select gvkey, datadate, at, pstkl, txditc,
-                    pstkrv, seq, pstk, gp
+                    pstkrv, seq, pstk, gp, revt, cogs
                     from comp.funda
                     where indfmt='INDL' 
                     and datafmt='STD'
@@ -41,7 +41,7 @@ crsp = db.raw_sql("""
                       on a.permno=b.permno
                       and b.namedt<=a.date
                       and a.date<=b.nameendt
-                      where a.date >= '01/01/1960'
+                      where a.date between '01/01/1960' and '12/31/2021'
                       and b.exchcd between 1 and 3
                       """, date_cols=['date']) 
 
@@ -121,7 +121,7 @@ df[ 'ps' ] = np.where( df[ 'ps' ].isnull(),
                                      df[ 'pstk' ], df[ 'ps' ] )
 df[ 'ps' ] = np.where( df[ 'ps' ].isnull(), 0, df[ 'ps' ])
 
-df[ 'txditc' ] = df[ 'txditc' ].fillna(0)
+df[ 'txditc' ] = df[ 'txditc' ].fillna( 0 )
 
 # book equity
 df[ 'be' ] = df[ 'seq' ] + df[ 'txditc' ] - df[ 'ps' ]
@@ -131,7 +131,7 @@ df[ 'be' ] = np.where( df[ 'be' ]>0, df[ 'be' ], np.nan )
 df[ 'gat' ] = df.groupby( [ 'gvkey' ] )[ 'at' ].pct_change()
 
 # gross profitability
-df[ 'GP' ] = df[ 'gp'] / df.groupby( [ 'gvkey' ] )[ 'at' ] #.shift( 1 )
+df[ 'GP' ] = ( df[ 'revt' ] - df[ 'cogs' ] ) / df[ 'at' ]#.groupby( [ 'gvkey' ] )[ 'at' ].shift( 1 )
 
 
 # Momentum 
@@ -160,13 +160,13 @@ crsp_mom['dlret'] = crsp_mom['dlret'].fillna(0)
 crsp_mom['ret'] = crsp_mom['ret'].fillna(0)
 
 # retadj factors in the delisting returns
-crsp_mom['retadj'] = ( 1+crsp_mom['ret'])*(1+crsp_mom['dlret'] ) - 1
+crsp_mom[ 'retadj' ] = ( 1+crsp_mom[ 'ret' ])*(1+crsp_mom[ 'dlret' ] ) - 1
 crsp_mom[ 'me' ] = crsp_mom[ 'prc' ].abs()*crsp_mom[ 'shrout' ] 
 
 mom = crsp_mom[ [ 'permno', 'jdate', 'ret'] ]
 mom[ 'gross_ret' ] = 1 + mom[ 'ret' ]
 mom[ 'mom' ] = mom.groupby( ['permno'] )[ 'gross_ret' ].rolling( window=11, min_periods=11, closed='left' ).apply( 
-    lambda x: x.prod() ).reset_index( 0, drop=True ) - 1
+                            lambda x: x.prod() ).reset_index( 0, drop=True ) - 1
 mom = mom[ ['permno', 'jdate', 'mom'] ].sort_values( by=['permno', 'jdate'] )
 crsp_mom1 = pd.merge( crsp_mom, mom, how='left', on=['permno', 'jdate'] )
 
@@ -175,26 +175,20 @@ me[ 'jdate' ] = me[ 'jdate' ] + MonthEnd( 6 )
 me.rename( columns={ 'me': 'lag6_me'}, inplace=True )
 crsp_mom2 = pd.merge( crsp_mom1, me, how='left', on=[ 'permno', 'jdate' ] )
 
-me1 = crsp_mom[ [ 'permno', 'jdate', 'me'] ] 
-me1[ 'jdate' ] = me1[ 'jdate' ] + MonthEnd( 1 )
-me1.rename( columns={ 'me': 'lag1_me'}, inplace=True )
-crsp_mom2 = pd.merge( crsp_mom2, me1, how='left', on=[ 'permno', 'jdate' ] )
-
 reversal  = crsp_mom[ [ 'permno', 'jdate', 'ret'] ]
 reversal[ 'jdate' ] = reversal[ 'jdate' ] + MonthEnd( 1 )
 reversal.rename( columns={ 'ret': 'reversal'}, inplace=True )
 crsp_mom3 = pd.merge( crsp_mom2, reversal, how='left', on=['permno', 'jdate'] )
 
 df = df.drop( [ 'date', 'ret', 'retx', 'me' ], axis=1 )
-df = pd.merge( crsp_mom3, df, how='left', on=['permno', 'jdate'] )
+df = pd.merge( crsp_mom3, df.drop_duplicates(subset=[ 'permno', 'jdate' ]), how='left', on=['permno', 'jdate'] )
 
 df = df.groupby( 'permno', as_index=True ).apply( lambda x: x.fillna( method='ffill', limit=11 ) )
 
-df = df[((df['exchcd'] == 1) | (df['exchcd'] == 2) |
-                                     (df['exchcd'] == 3)) &
-                                    ((df['shrcd'] == 10) | (df['shrcd'] == 11)) ]
+df = df[((df['exchcd'] == 1) | (df['exchcd'] == 2) | (df['exchcd'] == 3)) &
+         ((df['shrcd'] == 10) | (df['shrcd'] == 11)) ]
 
-df[ 'beme' ] = df[ 'be' ]*1000 / df[ 'lag6_me' ] 
+df[ 'beme' ] = df[ 'be' ]*1000 / df[ 'lag6_me' ]
 df.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
 
 annual_df = df[
@@ -208,17 +202,17 @@ annual_df[ 'count' ] = annual_df.groupby( ['permno'] ).cumcount()
 nyse = annual_df[ ( annual_df['beme']>0 ) & ( annual_df['me']>0 ) & \
              ( annual_df['count']>=1 ) & ( ( annual_df['shrcd']==10 ) | ( annual_df['shrcd']==11 ) )]
 
-nyse_sz = nyse.groupby( ['jdate'] )[ 'me' ].describe( percentiles=[ 0.3, 0.7 ] ).reset_index()
-nyse_sz = nyse_sz[ ['jdate','30%','70%'] ].rename( columns={ '30%':'sz30', '70%':'sz70' } )
+nyse_sz = nyse.groupby( ['jdate'] )[ 'me' ].describe( percentiles=[ 0.2, 0.8 ] ).reset_index()
+nyse_sz = nyse_sz[ ['jdate','20%','80%'] ].rename( columns={ '20%':'sz20', '80%':'sz80' } )
 
 annual_df = pd.merge( annual_df, nyse_sz, how='inner', on=[ 'jdate'] )
 
 def sz_bucket( row ):
-    if row[ 'lag1_me' ]<=row[ 'sz30' ]:
+    if row[ 'lag1_me' ]<=row[ 'sz20' ]:
         value = 'Micro'
-    elif row[ 'lag1_me' ]<=row[ 'sz70' ]:
+    elif row[ 'lag1_me' ]<=row[ 'sz80' ]:
         value ='Small'
-    elif row[ 'lag1_me' ]>row[ 'sz70' ]:
+    elif row[ 'lag1_me' ]>row[ 'sz80' ]:
         value = 'Large'
     else:
         value = ''    
@@ -279,44 +273,73 @@ annual_df[ 'gat' ] = np.where( annual_df[ 'gat' ] >= annual_df['ag_99%'], annual
                                 np.where( annual_df[ 'gat' ] <= annual_df['ag_1%'], 
                                           annual_df['ag_1%'], annual_df[ 'gat' ]) )
 
+#df[ 'beme' ] = np.log( df[ 'beme' ] )
+#df[ [ 'me', 'lag6_me', 'lag1_me' ] ] = np.log( df[ [ 'me', 'lag6_me', 'lag1_me' ] ] / 1000 )
+
+
 annual_df = annual_df[ ['permno', 'date', 'jdate', 'shrcd', 'exchcd', 'siccd', 'retadj', 'me', 'beme',
                         'lag6_me', 'lag1_me', 'reversal', 'mom', 'gat', 'GP', 'szport'] ]
+
+annual_df[ ['GP', 'beme', 'me', 'reversal', 'mom']].describe().T
 
 annual_df_large = annual_df[ annual_df[ 'szport' ] == 'Large' ]
 annual_df_small = annual_df[ annual_df[ 'szport' ] == 'Small' ]
 annual_df_micro = annual_df[ annual_df[ 'szport' ] == 'Micro' ]
 
-annual_df_noFinUt = annual_df[ ( ( annual_df['siccd'] > 4900 ) & ( annual_df['siccd'] <= 4949 ) ) |
-                               ( ( annual_df['siccd'] > 6000 ) & ( annual_df['siccd'] <= 6799 ) ) ]
-annual_df_noFin = annual_df[ ( ( annual_df['siccd'] > 6000 ) & ( annual_df['siccd'] <= 6999 ) ) ]
+annual_df_noFinUt = annual_df[ ( ( annual_df['siccd'] < 4900 ) | ( annual_df['siccd'] > 4999 ) ) &
+                               ( ( annual_df['siccd'] < 6000 ) | ( annual_df['siccd'] > 6999 ) ) ]
+annual_df_noFin = annual_df[ ( ( annual_df['siccd'] < 6000 ) | ( annual_df['siccd'] > 6999 ) ) & ((annual_df[ 'szport' ] == 'Large')|
+(annual_df[ 'szport' ] == 'Small')) ]
 
 
 ## FF factors
 _ff = db.get_table( library='ff', table='factors_monthly' )
 _ff = _ff[ ['date', 'mktrf', 'smb', 'hml', 'rf'] ]
-_ff['jdate'] = _ff['date']+MonthEnd( 0 )
+_ff['jdate'] = _ff['date'] + MonthEnd( 0 )
 
 ## Fama-McBeth regression 
-annual_df_noFin[ 'logme' ] = np.log( annual_df_noFin['me'] )
+annual_df_noFin[ 'logme' ] = np.log( annual_df_noFin['lag1_me']/1000 )
 annual_df_noFin[ 'logbeme' ] = np.log( annual_df_noFin['beme'] )
 #annual_df_noFin[ np.isinf( annual_df_noFin ) ] = np.nan
-annual_df_noFin = pd.merge( annual_df_noFin, _ff[ ['jdate', 'rf'] ],
-                            how='left', on='jdate' )
+annual_df_noFin = pd.merge( annual_df_noFin, _ff[ ['jdate', 'rf'] ], how='left', on='jdate' )
 annual_df_noFin[ 'er' ] = annual_df_noFin[ 'retadj' ] - annual_df_noFin[ 'rf' ]
-temp = annual_df_noFin#.dropna( axis=0 )
-temp.sort_values( by=['permno', 'date'], inplace=True )
+
+temp = annual_df_noFin.dropna( axis=0 )
+temp.sort_values( by=['permno', 'jdate'], inplace=True )
+temp = temp[ ( temp['jdate']>='1963-07-31') &  (temp['jdate']<='2013-12-31') ]
+temp.to_csv('test.csv')
+dates = pd.to_datetime( temp[ 'jdate' ].unique() ).strftime( '%Y-%m-%d' )
+temp.set_index( [ 'permno', 'jdate' ], inplace=True )
 
 
-temp = temp[ ( temp['jdate']>='1963-07-31') &  (temp['jdate']<='2010-12-31') ].set_index( ['permno', 'jdate' ] )
-temp.sort_values( by=['permno', 'date'], inplace=True )
 
-y = temp[ 'er' ]
+y = temp[ 'er' ]*100
 x = temp[ ['GP', 'logbeme', 'logme', 'reversal', 'mom'] ]
+x[ ['GP', 'logbeme', 'logme', 'reversal', 'mom']].describe(percentiles=[ .01, .25, .5, .75, .99 ]).T
+
+
+params = pd.DataFrame([])
+for dt in dates: 
+    temp2 = temp[ temp['jdate']==dt].sort_values(by='permno')
+
+    y = temp2[ 'er' ]*100
+    x = temp2[ ['GP', 'logbeme', 'logme', 'reversal', 'mom'] ]
+
+    model = sm.OLS( y, x )
+    res = model.fit()
+    params[ dt ] = res.params
+
+
 
 model = FamaMacBeth( y, x )
 res = model.fit()
 
 print( res.summary )
+
+model2 = PooledOLS( y, x )
+res2 = model2.fit()
+
+print( res2.summary )
 
 
 
