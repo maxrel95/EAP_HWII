@@ -35,6 +35,17 @@ def ff6model( df,  ):
     eps = eps.rename( columns={ 0: 'residff6' } )
     return eps
 
+def sz_bucket( row ):
+    if row[ 'logme' ]<=row[ 'sz20' ]:
+        value = 'Micro'
+    elif row[ 'logme' ]<=row[ 'sz50' ]:
+        value ='Small'
+    elif row[ 'logme' ]>row[ 'sz50' ]:
+        value = 'Large'
+    else:
+        value = ''    
+    return value
+
 
 def trim( x ): 
     nyse = x[ (x['exchcd']==1) & ( x['beme']>0 ) & ( x['me']>0 ) & \
