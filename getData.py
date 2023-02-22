@@ -210,25 +210,12 @@ annual_df[ 'count' ] = annual_df.groupby( ['permno'] ).cumcount()
 # filter dataset
 # size
 nyse = annual_df[ (annual_df['exchcd']==1) & ( annual_df['beme']>0 ) & ( annual_df['me']>0 ) & \
-             ( annual_df['count']>=1 ) & ( ( annual_df['shrcd']==10 ) | ( annual_df['shrcd']==11 ) )&
-             ( annual_df['jdate'].dt.month == 6 ) ]
+             ( annual_df['count']>=1 ) & ( ( annual_df['shrcd']==10 ) | ( annual_df['shrcd']==11 ) )]
 
 nyse_sz = nyse.groupby( ['jdate'] )[ 'logme' ].describe( percentiles=[ 0.2, 0.5 ] ).reset_index()
 nyse_sz = nyse_sz[ ['jdate','20%','50%'] ].rename( columns={ '20%':'sz20', '50%':'sz50' } )
 
-annual_df = pd.merge( annual_df, nyse_sz, how='left', on=[ 'jdate'] )
-annual_df[['sz20', 'sz50']] = annual_df.groupby( 'permno', as_index=True )['sz20', 'sz50'].ffill( limit=11 )
-
-def sz_bucket( row ):
-    if row[ 'logme' ]<=row[ 'sz20' ]:
-        value = 'Micro'
-    elif row[ 'logme' ]<=row[ 'sz50' ]:
-        value ='Small'
-    elif row[ 'logme' ]>row[ 'sz50' ]:
-        value = 'Large'
-    else:
-        value = ''    
-    return value
+annual_df = pd.merge( annual_df, nyse_sz, how='inner', on=[ 'jdate'] )
 
 annual_df['szport'] = np.where( (annual_df['beme']>0) & (annual_df['me']>0) & (annual_df['count']>=1),
                                  annual_df.apply(sz_bucket, axis=1), '')
