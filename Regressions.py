@@ -13,6 +13,10 @@ fm = FamaMacBeth.from_formula( "er ~ 1 + GP+logbm+logme+reversal+mom", data=data
 res = fm.fit(cov_type='kernel')
 print(res.summary)
 
+fm2 = FamaMacBeth.from_formula( "er ~ 1 +logbm+logme+reversal+mom", data=data)
+res2 = fm2.fit(cov_type='kernel')
+print(res2.summary)
+
 all_df = pd.read_csv( 'Data/all_df.csv' )
 all_df['jdate'] = pd.to_datetime( all_df['jdate'] )
 all_df.set_index( [ 'permno', 'jdate' ], inplace=True )
