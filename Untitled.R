@@ -15,13 +15,18 @@ library( stargazer )
 require(lmtest)
 
 
-dataTable = as.data.frame( fread( "Data/benchmark23.csv" ) ) # import data
+dataTable = as.data.frame( fread( "Data/benchmark.csv" ) ) # import data
 dataTable$er = dataTable$er*100
 fpmg <- pmg(er ~  1 +GP + logbm + logme + reversal + mom, dataTable, index=c("jdate","permno"), )
 summary( fpmg )
 
+micro = dataTable %>%
+  filter( szport == 'Micro' )
+fpmg <- pmg(er ~  1 +GP + logbm + logme + reversal + mom, micro, index=c("jdate","permno"), )
+summary( fpmg )
+
 dataTable$residff3 = dataTable$residff3*100
-fpmg2 <- pmg(residff3~  1 +GP + logbm + logme + reversal + mom, dataTable, index=c("jdate","permno"))
+fpmg2 <- pmg(residff3~  1 + GP + logbm + logme + reversal + mom, dataTable, index=c("jdate","permno"))
 summary( fpmg2 )
 
 dataTable$residff6 = dataTable$residff6*100
