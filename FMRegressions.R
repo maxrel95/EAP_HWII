@@ -117,8 +117,7 @@ stargazer( fm_a_full_er, fm_a_large_er, fm_a_small_er, fm_a_micro_er, type = 'te
 
 # interactions 
 interaction_df = df_a_full %>%
-  filter( szport != 'Micro', 
-          ( siccd < 6000 | siccd > 6799 ) )
+  filter( szport !='Micro' )
 
 gp_gat <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + GP*gat, interaction_df, index=c("jdate","permno") )
 gp_logbm <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + GP*logbm, interaction_df, index=c("jdate","permno") )
@@ -151,35 +150,38 @@ tstat_int = c(tail(gp_gat$coefficients,1)/sqrt(tail(diag(gp_gat$vcov),1)), tail(
 tstat_int[order(abs(tstat_int), decreasing=TRUE)[1:5]]
 
 mom_interaction <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + reversal*mom + mom*logbm,
-                       interaction_df, index=c("jdate","permno") )
+                       df_a_full, index=c("jdate","permno") )
 rev_interaction <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + reversal*mom + reversal*gat,
-                       interaction_df, index=c("jdate","permno") )
+                       df_a_full, index=c("jdate","permno") )
 bm_interaction <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + logbm*mom + logbm*logme,
-                       interaction_df, index=c("jdate","permno") )
+                      df_a_full, index=c("jdate","permno") )
 all_interaction = pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + reversal*mom + mom*logbm + logbm*logme,
-                      interaction_df, index=c("jdate","permno") )
-summary(all_interaction)
+                      df_a_full, index=c("jdate","permno") )
 
-stargazer( mom_interaction, rev_interaction, bm_interaction,  type = 'text', digits = 2,
-           title="Regression with Interaction Results", digits.extra = 1,
-           align=TRUE, dep.var.labels=c("ER"), styles = 'aer', report = 'vc*t',
-           covariate.labels=c("Gross Profit","Asset Growth", "log(BE/ME)","log(ME)","r(1,1)","r(12,2)",
-                              "momxrev","momxbm","bmxsize"))
-stargazer( all_interaction,  type = 'text', digits = 2,
-           title="Regression with Interaction Results", digits.extra = 1,
-           align=TRUE, dep.var.labels=c("ER"), styles = 'aer', report = 'vc*t',
-           covariate.labels=c("Gross Profit","Asset Growth", "log(BE/ME)","log(ME)","r(1,1)","r(12,2)",
-                              "momxrev","momxbm","bmxsize"))
+mom_interaction_nomic <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + reversal*mom + mom*logbm,
+                             interaction_df, index=c("jdate","permno") )
+rev_interaction_nomic <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + reversal*mom + reversal*gat,
+                             interaction_df, index=c("jdate","permno") )
+bm_interaction_nomic <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + logbm*mom + logbm*logme,
+                            interaction_df, index=c("jdate","permno") )
+all_interaction_nomic = pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + reversal*mom + mom*logbm + logbm*logme,
+                            interaction_df, index=c("jdate","permno") )
 
+stargazer( mom_interaction, bm_interaction, all_interaction,  type = 'text', digits = 2,
+           title="Regression with Interaction Results", digits.extra = 1,
+           align=TRUE, dep.var.labels=c("ER-All", "ER-noMic"), styles = 'aer', report = 'vc*t',
+           covariate.labels=c("Gross Profit","Asset Growth", "log(BE/ME)","log(ME)","$r_{1,1}$","$r_{12,2}$",
+                              "momxrev","momxbm","bmxsize"))
 
 stargazer( mom_interaction, bm_interaction, all_interaction,  out = 'results/interactions.tex', digits = 2,
            title="Regression with Interaction Results", digits.extra = 1,
            align=TRUE, dep.var.labels=c("ER"), styles = 'aer', report = 'vc*t',
-           covariate.labels=c("Gross Profit","Asset Growth", "log(BE/ME)","log(ME)","r(1,1)","r(12,2)",
-                               "momxrev","momxbm","bmxsize"))
+           covariate.labels=c("Gross Profit","Asset Growth", "log(BE/ME)","log(ME)","$r_{1,1}$","$r_{12,2}$",
+                               "$r_{12,2}$ X $r_{1,1}$","$r_{12,2}$ X log(BE/ME)","log(BE/ME) X log(ME)"))
 
-stargazer( all_interaction,  out = 'results/interactions_all.tex', digits = 2,
+stargazer( mom_interaction_nomic, bm_interaction_nomic, all_interaction_nomic,  out = 'results/interactions_mic.tex', digits = 2,
            title="Regression with Interaction Results", digits.extra = 1,
-           align=TRUE, dep.var.labels=c("ER"), styles = 'aer', report = 'vc*t',
-           covariate.labels=c("Gross Profit","Asset Growth", "log(BE/ME)","log(ME)","r(1,1)","r(12,2)",
-                              "momxrev","momxbm","bmxsize"))
+           align=TRUE, dep.var.labels=c("ER"), report = 'vc*t',
+           covariate.labels=c("Gross Profit","Asset Growth", "log(BE/ME)","log(ME)","$r_{1,1}$","$r_{12,2}$",
+                              "$r_{12,2}$ X $r_{1,1}$","$r_{12,2}$ X log(BE/ME)","log(BE/ME) X log(ME)"))
+
