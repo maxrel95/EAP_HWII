@@ -270,15 +270,15 @@ benchmark.sort_values( by=['permno', 'jdate'], inplace=True )
 benchmark.to_csv('Data/benchmark.csv')
 
 # all data
-stats_df = annual_df.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
+stats_df = annual_df_trim.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
 
 stats_all = stats_df[ ['GP', 'gat', 'logbm', 'logme', 'reversal', 'mom']].describe( 
     percentiles=[ .01, .25, .5, .75, .99 ]).T.round( 3 ).drop('count', axis=1)
 corr_df_pearson = stats_df[ ['GP', 'gat', 'logbm', 'logme', 'reversal', 'mom'] ].corr().round( 3 )
 corr_df_spearman = stats_df[ ['GP', 'gat', 'logbm', 'logme', 'reversal', 'mom'] ].corr( method='spearman' ).round( 3 )
-stats_all.style.to_latex( 'results/statistics.tex' )
-corr_df_pearson.style.to_latex( 'results/pearsoncorr.tex' )
-corr_df_spearman.style.to_latex( 'results/spearmancorr.tex' )
+stats_all.round(3).to_latex( 'results/statistics.tex' )
+corr_df_pearson.round(2).to_latex( 'results/pearsoncorr.tex' )
+corr_df_spearman.round(2).to_latex( 'results/spearmancorr.tex' )
 
 # export
 all_df = annual_df_trim.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
