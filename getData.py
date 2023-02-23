@@ -28,7 +28,7 @@ compustat_annual[ 'datadate' ] = compustat_annual[ 'datadate' ] + MonthEnd( 0 )
 compustat_annual = compustat_annual.sort_values( by=['gvkey', 'datadate'] ).drop_duplicates()
 
 compustat_annual[ 'at' ] = np.where( compustat_annual[ 'at' ] == 0, np.nan, compustat_annual[ 'at' ] )
-compustat_annual = compustat_annual.dropna( subset=['at'] )
+compustat_annual = compustat_annual.dropna( subset=[ 'at' ] )
 
 ## CRSP block 
 crsp = db.raw_sql("""
@@ -50,7 +50,7 @@ crsp[ [ 'permco', 'permno', 'shrcd', 'exchcd', 'siccd' ] ] = crsp[ [ 'permco', '
 crsp[ 'jdate' ] = crsp[ 'date' ] + MonthEnd( 0 )
 
 crsp = crsp.dropna( subset=['prc'] )
-crsp[ 'me' ] = crsp[ 'prc' ].abs()*crsp[ 'shrout' ] 
+crsp[ 'me' ] = crsp[ 'prc' ].abs()*crsp[ 'shrout' ]
 
 # if market cap is nan then let the return equal to 0
 crsp[ 'ret' ] = np.where( crsp[ 'me' ].isnull(), 0, crsp[ 'ret' ] )
@@ -113,10 +113,8 @@ df = df[ df['temp'].notna() ]
 df = df.sort_values( by=['permno', 'jdate'] )
 
 ## annual variables
-df[ 'ps' ] = np.where( df[ 'pstkrv' ].isnull(),
-                                     df[ 'pstkl' ], df[ 'pstkrv' ] )
-df[ 'ps' ] = np.where( df[ 'ps' ].isnull(),
-                                     df[ 'pstk' ], df[ 'ps' ] )
+df[ 'ps' ] = np.where( df[ 'pstkrv' ].isnull(),df[ 'pstkl' ], df[ 'pstkrv' ] )
+df[ 'ps' ] = np.where( df[ 'ps' ].isnull(), df[ 'pstk' ], df[ 'ps' ] )
 df[ 'ps' ] = np.where( df[ 'ps' ].isnull(), 0, df[ 'ps' ])
 
 df[ 'txditc' ] = df[ 'txditc' ].fillna( 0 )
@@ -167,7 +165,8 @@ crsp_mom = crsp_mom.sort_values(by=['permno', 'jdate'])
 # compute momentum 
 mom = crsp_mom[ [ 'permno', 'jdate', 'ret'] ]
 mom[ 'gross_ret' ] = 1 + mom[ 'ret' ]
-mom[ 'mom' ] = mom.groupby( ['permno'] )[ 'gross_ret' ].rolling( window=11, min_periods=11, closed='left' ).apply( 
+mom[ 'mom' ] = mom.groupby( ['permno'] )[ 'gross_ret' ].rolling(
+                             window=11, min_periods=11, closed='left' ).apply( 
                             lambda x: x.prod() ).reset_index( 0, drop=True ) - 1
 mom = mom[ ['permno', 'jdate', 'mom'] ].sort_values( by=['permno', 'jdate'] )
 crsp_mom1 = pd.merge( crsp_mom, mom, how='left', on=['permno', 'jdate'] )
@@ -268,7 +267,7 @@ bb = benchmark.groupby( 'permno', as_index=False ).apply( ff6model )
 benchmark = pd.merge( benchmark, aa, how='inner', on=['permno', 'jdate'] )
 benchmark = pd.merge( benchmark, bb, how='inner', on=['permno', 'jdate'] )
 benchmark.sort_values( by=['permno', 'jdate'], inplace=True )
-benchmark.to_csv('Data/benchmark23.csv')
+benchmark.to_csv('Data/benchmark.csv')
 
 # all data
 stats_df = annual_df.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
@@ -277,9 +276,9 @@ stats_all = stats_df[ ['GP', 'gat', 'logbm', 'logme', 'reversal', 'mom']].descri
     percentiles=[ .01, .25, .5, .75, .99 ]).T.round( 3 ).drop('count', axis=1)
 corr_df_pearson = stats_df[ ['GP', 'gat', 'logbm', 'logme', 'reversal', 'mom'] ].corr().round( 3 )
 corr_df_spearman = stats_df[ ['GP', 'gat', 'logbm', 'logme', 'reversal', 'mom'] ].corr( method='spearman' ).round( 3 )
-stats_all.to_latex( 'results/statistics.tex' )
-corr_df_pearson.to_latex( 'results/pearsoncorr.tex' )
-corr_df_spearman.to_latex( 'results/spearmancorr.tex' )
+stats_all.style.to_latex( 'results/statistics.tex' )
+corr_df_pearson.style.to_latex( 'results/pearsoncorr.tex' )
+corr_df_spearman.style.to_latex( 'results/spearmancorr.tex' )
 
 # export
 all_df = annual_df_trim.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
@@ -292,7 +291,7 @@ all_df = pd.merge( all_df, bb, how='inner', on=['permno', 'jdate'] )
 all_df.sort_values( by=['permno', 'jdate'], inplace=True )
 all_df.to_csv( 'Data/all_df.csv' )
 
-# Large
+""" # Large
 large_df = annual_df_large_trim.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
 large_df = pd.merge( large_df, _ff, how='left', on='jdate' )
 large_df[ 'er' ] = large_df[ 'retadj_l1' ] - large_df[ 'rfl1' ]
@@ -336,7 +335,7 @@ noFinUtil_df = pd.merge( noFinUtil_df, bb, how='inner', on=['permno', 'jdate'] )
 noFinUtil_df.sort_values( by=['permno', 'jdate'], inplace=True )
 noFinUtil_df.to_csv( 'Data/noFinUtil_df.csv' )
 
-
+ """
 ####################################################################
 ####################################################################
 ########################## Quarterly data ##########################
@@ -357,6 +356,7 @@ compustat_q = db.raw_sql("""
 compustat_q[ 'datadate' ] = compustat_q[ 'datadate' ] + MonthEnd( 0 )
 compustat_q = compustat_q.sort_values(by=['gvkey', 'datadate']).drop_duplicates()
 compustat_q['atq'] = np.where(compustat_q['atq'] == 0, np.nan, compustat_q['atq'])
+compustat_q = compustat_q.dropna(subset=['atq'])
 
 ccm1 = pd.merge(compustat_q, link_table, how='left', on=['gvkey'])
 ccm1['yearend'] = ccm1['datadate'] + YearEnd(0)
@@ -381,7 +381,7 @@ data_rawq = data_rawq[data_rawq['temp'].notna()]
 data_rawq.loc[data_rawq.groupby(['permno', 'yearend', 'datadate'], as_index=False).nth([-1]).index, 'temp'] = 1
 data_rawq = data_rawq[data_rawq['temp'].notna()]
 
-data_rawq = data_rawq.sort_values(by=['permno', 'jdate'])
+data_rawq = data_rawq.sort_values( by=['permno', 'jdate'] )
 
 data_rawq['beq'] = np.where(data_rawq['seqq']>0, data_rawq['seqq']+data_rawq['txditcq']-data_rawq['pstkq'], np.nan)
 data_rawq['beq'] = np.where(data_rawq['beq']<=0, np.nan, data_rawq['beq'])
@@ -391,13 +391,11 @@ data_rawq['gat'] = (data_rawq['atq']-data_rawq['atq_l4'])/data_rawq['atq_l4']
 
 data_rawq['revtq4'] = aggregate_quarter( 'revtq', data_rawq )
 data_rawq['cogsq4'] = aggregate_quarter( 'cogsq', data_rawq )
-data_rawq['GP'] = (data_rawq['revtq']-data_rawq['cogsq'])/data_rawq['atq_l4']
+data_rawq['GP'] = (data_rawq['revtq4']-data_rawq['cogsq4'])/data_rawq['atq_l4']
 
 data_rawq = data_rawq.drop( [ 'date', 'ret', 'retx', 'me' ], axis=1 )
 data_rawq = pd.merge( crsp_mom2, data_rawq.drop_duplicates(subset=[ 'permno', 'jdate' ]), how='left', on=['permno', 'jdate'] )
-
 data_rawq = data_rawq.groupby( 'permno', as_index=True ).apply( lambda x: x.fillna( method='ffill', limit=2 ) )
-
 data_rawq = data_rawq[((data_rawq['exchcd'] == 1) | (data_rawq['exchcd'] == 2) | (data_rawq['exchcd'] == 3)) &
          ((data_rawq['shrcd'] == 10) | (data_rawq['shrcd'] == 11)) ]
 
