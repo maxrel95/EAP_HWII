@@ -81,6 +81,18 @@ df_q_full_filtered = df_q_full %>%
 df_q_full_filtered$er = df_q_full_filtered$er*100
 fm_q_full <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom, df_q_full_filtered, index=c("jdate","permno") )
 summary( fm_q_full )
+
+# not reported but they dont give more value to display them 
+# Full quarterly  with ff3 
+df_q_full_filtered$residff6 = df_q_full_filtered$residff6*100
+fm_q_full_ff6 <- pmg(residff6 ~ 1 + GP + gat + logbm + logme + reversal + mom, df_q_full_filtered, index=c("jdate","permno") )
+summary( fm_q_full_ff6 )
+
+# quarterly without financial and utilities 
+df_q_indu = df_q_full_filtered %>% 
+  filter( ( siccd < 6000 | siccd > 6799 ) & ( siccd < 9000 | siccd > 9799 ) )
+fm_q_indu_er <- pmg(er ~1 + GP + gat + logbm + logme + reversal + mom, df_q_indu, index=c("jdate","permno") )
+summary( fm_q_indu_er )
 #trace(stargazer:::.stargazer.wrap, edit = T)
 
 stargazer( fm_a_full_er, fm_a_full_ff6, fm_q_full, fm_a_indu_er, out = 'results/fmregression.tex', digits = 2,
