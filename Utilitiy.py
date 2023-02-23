@@ -10,30 +10,41 @@ from pandas.tseries.offsets import *
 import statsmodels.api as sm
 
 
-def ff3model( df,  ):
+def ff3model( df ):
     y = df['er']
-    if y.shape[0] == 0:
-        return np.nan
+    if y.shape[0] < 30:
+        z = np.empty(y.shape)
+        z[:] = np.nan
+        temp = pd.DataFrame( z, columns=['residff3'])
+        temp = pd.concat( [ df[['permno', 'jdate']], temp], axis=1)
+        return temp
     x = df[['mktrf', 'smb', 'hml']]
     x = sm.add_constant( x )
     model = sm.OLS( y, x)
     res = model.fit()
-    eps =  pd.concat( [ df[['permno', 'jdate']], res.resid], axis=1)
+    resid = res.resid - res.params[ 0 ]
+    eps =  pd.concat( [ df[['permno', 'jdate']], resid], axis=1)
     eps = eps.rename( columns={ 0: 'residff3' } )
     return eps
 
 
 def ff6model( df,  ):
     y = df['er']
-    if y.shape[0] == 0:
-        return np.nan
+    if y.shape[0] < 30:
+        z = np.empty(y.shape)
+        z[:] = np.nan
+        temp = pd.DataFrame( z, columns=['residff6'])
+        temp = pd.concat( [ df[['permno', 'jdate']], temp], axis=1)
+        return temp
     x = df[['mktrf', 'smb', 'hml', 'rmw', 'cma', 'umd']]
     x = sm.add_constant( x )
     model = sm.OLS( y, x)
     res = model.fit()
-    eps =  pd.concat( [ df[['permno', 'jdate']], res.resid], axis=1)
+    resid = res.resid - res.params[ 0 ]
+    eps =  pd.concat( [ df[['permno', 'jdate']], resid], axis=1)
     eps = eps.rename( columns={ 0: 'residff6' } )
     return eps
+
 
 def sz_bucket( row ):
     if row[ 'logme' ]<=row[ 'sz20' ]:
