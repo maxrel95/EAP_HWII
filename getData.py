@@ -7,7 +7,7 @@ import pandas as pd
 import wrds
 from dateutil.relativedelta import *
 from pandas.tseries.offsets import *
-from Utilitiy import *
+from Utility import *
 
 
 db = wrds.Connection( wrds_username = 'maxrel95' )
