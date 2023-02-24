@@ -10,7 +10,7 @@ from pandas.tseries.offsets import *
 from Utility import *
 
 
-db = wrds.Connection( wrds_username = 'maxrel95' )jhj
+db = wrds.Connection( wrds_username = 'maxrel95' )
 
 # Annual fundamental data request
 compustat_annual = db.raw_sql("""
