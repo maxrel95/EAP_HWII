@@ -1,15 +1,8 @@
 from linearmodels import FamaMacBeth
-import pandas as pd
-import numpy as np
-
-
-data = pd.read_csv('Data/benchmark.csv')
-data['jdate'] = pd.to_datetime( data['jdate'] )
-pd.to_datetime( data['jdate'].unique()).sort_values()
-data.set_index( [ 'permno', 'jdate' ], inplace=True )
-data[ 'er' ] = data[ 'er' ] *100
-
+import statsmodels.formula.api as smf
 import statsmodels.api as sm
+import pandas as pd
+
 
 def fm( df, var, type='er' ):
     x = df[var]
@@ -20,14 +13,19 @@ def fm( df, var, type='er' ):
     r2 = res.rsquared_adj
     return r2
 
-import statsmodels.formula.api as smf
 
 def fm_iteraction( df, formula ):
     mdl = smf.ols( formula=formula, data=df )
     res = mdl.fit()
     return res.rsquared_adj
 
-test = data.groupby('jdate').apply(fm, var=['GP','logbm','logme','reversal','mom'])
+
+data = pd.read_csv('Data/benchmark.csv')
+data['jdate'] = pd.to_datetime( data['jdate'] )
+pd.to_datetime( data['jdate'].unique()).sort_values()
+data.set_index( [ 'permno', 'jdate' ], inplace=True )
+data[ 'er' ] = data[ 'er' ] *100
+
 
 fm_b = FamaMacBeth.from_formula( "er ~ 1 + GP+logbm+logme+reversal+mom", data=data)
 res = fm_b.fit(cov_type='kernel')
