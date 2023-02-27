@@ -22,7 +22,7 @@ def ff3model( df ):
     x = sm.add_constant( x )
     model = sm.OLS( y, x)
     res = model.fit()
-    resid = res.resid - res.params[ 0 ]
+    resid = res.resid + res.params[ 0 ]
     eps =  pd.concat( [ df[['permno', 'jdate']], resid], axis=1)
     eps = eps.rename( columns={ 0: 'residff3' } )
     return eps
@@ -40,7 +40,7 @@ def ff6model( df,  ):
     x = sm.add_constant( x )
     model = sm.OLS( y, x)
     res = model.fit()
-    resid = res.resid - res.params[ 0 ]
+    resid = res.resid + res.params[ 0 ]
     eps =  pd.concat( [ df[['permno', 'jdate']], resid], axis=1)
     eps = eps.rename( columns={ 0: 'residff6' } )
     return eps
