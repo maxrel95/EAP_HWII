@@ -55,7 +55,6 @@ sic_df = all_df[ ( ( all_df['siccd'] < 9000 ) | ( all_df['siccd'] > 9799 ) ) &
 fm_a = FamaMacBeth.from_formula( "er ~ 1 + GP+gat+logbm+logme+reversal+mom", data=all_df)
 res_a = fm_a.fit( cov_type='kernel' )
 r2_fm_a = all_df.groupby('jdate').apply(fm, var=['GP', 'gat','logbm','logme','reversal','mom']).mean()
-
 print( res_a.summary )
 
 fm_ff3 = FamaMacBeth.from_formula( "residff3 ~ 1 + GP+gat+logbm+logme+reversal+mom", data=all_df)
