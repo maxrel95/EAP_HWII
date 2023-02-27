@@ -124,3 +124,18 @@ def aggregate_quarter(series, df):#
     result = df['%s' % series] + lag['%s1' % series] + lag['%s2' % series] + lag['%s3' % series]
     return result
 
+
+def fm( df, var, type='er' ):
+    x = df[var]
+    x = sm.add_constant( x )
+    y = df[type]
+    mdl = sm.OLS( y,x )
+    res = mdl.fit()
+    r2 = res.rsquared_adj
+    return r2
+
+
+def fm_iteraction( df, formula ):
+    mdl = smf.ols( formula=formula, data=df )
+    res = mdl.fit()
+    return res.rsquared_adj
