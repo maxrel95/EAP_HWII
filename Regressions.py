@@ -1,6 +1,4 @@
 from linearmodels import FamaMacBeth
-import statsmodels.formula.api as smf
-import statsmodels.api as sm
 import pandas as pd
 from Utility import fm, fm_iteraction
 

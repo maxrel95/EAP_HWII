@@ -8,6 +8,7 @@ import wrds
 from dateutil.relativedelta import *
 from pandas.tseries.offsets import *
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
 
 
 def ff3model( df ):
@@ -111,6 +112,7 @@ def trim( x ):
                                 np.where( x[ 'gat' ] <= x['ag_1%'], 
                                           x['ag_1%'], x[ 'gat' ]) )
     return x
+
 
 def aggregate_quarter(series, df):#
     """
