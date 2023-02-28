@@ -291,51 +291,6 @@ all_df = pd.merge( all_df, bb, how='inner', on=['permno', 'jdate'] )
 all_df.sort_values( by=['permno', 'jdate'], inplace=True )
 all_df.to_csv( 'Data/all_df.csv' )
 
-""" # Large
-large_df = annual_df_large_trim.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
-large_df = pd.merge( large_df, _ff, how='left', on='jdate' )
-large_df[ 'er' ] = large_df[ 'retadj_l1' ] - large_df[ 'rfl1' ]
-aa = large_df.groupby( 'permno', as_index=False ).apply( ff3model )
-bb = large_df.groupby( 'permno', as_index=False ).apply( ff6model )
-large_df = pd.merge( large_df, aa, how='inner', on=['permno', 'jdate'] )
-large_df = pd.merge( large_df, bb, how='inner', on=['permno', 'jdate'] )
-large_df.sort_values( by=['permno', 'jdate'], inplace=True )
-large_df.to_csv( 'Data/large_df.csv' )
-
-# Small
-small_df = annual_df_small_trim.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
-small_df = pd.merge( small_df, _ff, how='left', on='jdate' )
-small_df[ 'er' ] = small_df[ 'retadj_l1' ] - small_df[ 'rfl1' ]
-aa = small_df.groupby( 'permno', as_index=False ).apply( ff3model )
-bb = small_df.groupby( 'permno', as_index=False ).apply( ff6model )
-small_df = pd.merge( small_df, aa, how='inner', on=['permno', 'jdate'] )
-small_df = pd.merge( small_df, bb, how='inner', on=['permno', 'jdate'] )
-small_df.sort_values( by=['permno', 'jdate'], inplace=True )
-small_df.to_csv( 'Data/small_df.csv' )
-
-# micro
-micro_df = annual_df_micro_trim.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
-micro_df = pd.merge( micro_df, _ff, how='left', on='jdate' )
-micro_df[ 'er' ] = micro_df[ 'retadj_l1' ] - micro_df[ 'rfl1' ]
-aa = micro_df.groupby( 'permno', as_index=False ).apply( ff3model )
-bb = micro_df.groupby( 'permno', as_index=False ).apply( ff6model )
-micro_df = pd.merge( micro_df, aa, how='inner', on=['permno', 'jdate'] )
-micro_df = pd.merge( micro_df, bb, how='inner', on=['permno', 'jdate'] )
-micro_df.sort_values( by=['permno', 'jdate'], inplace=True )
-micro_df.to_csv( 'Data/micro_df.csv' )
-
-# exclude Fin/Util
-noFinUtil_df = annual_df_noFinUt_trim.dropna( subset=[ 'GP', 'gat', 'logbm', 'logme', 'reversal', 'mom', 'retadj_l1' ] )
-noFinUtil_df = pd.merge( noFinUtil_df, _ff, how='left', on='jdate' )
-noFinUtil_df[ 'er' ] = noFinUtil_df[ 'retadj_l1' ] - noFinUtil_df[ 'rfl1' ]
-aa = noFinUtil_df.groupby( 'permno', as_index=False ).apply( ff3model )
-bb = noFinUtil_df.groupby( 'permno', as_index=False ).apply( ff6model )
-noFinUtil_df = pd.merge( noFinUtil_df, aa, how='inner', on=['permno', 'jdate'] )
-noFinUtil_df = pd.merge( noFinUtil_df, bb, how='inner', on=['permno', 'jdate'] )
-noFinUtil_df.sort_values( by=['permno', 'jdate'], inplace=True )
-noFinUtil_df.to_csv( 'Data/noFinUtil_df.csv' )
-
- """
 ####################################################################
 ####################################################################
 ########################## Quarterly data ##########################
@@ -424,6 +379,8 @@ quarterly_df = pd.merge( quarterly_df, nyse_sz_q, how='inner', on=[ 'jdate'] )
 quarterly_df['szport'] = np.where( (quarterly_df['beme']>0) & (quarterly_df['me']>0) & (quarterly_df['count']>=1),
                                  quarterly_df.apply(sz_bucket, axis=1), '')
 quarterly_df.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
+
+quarterly_df[ 'logme1' ] = quarterly_df.groupby( 'permno' )[ 'logme' ].shift( 4 )
 
 
 quarterly_df[ 'retadj_l1' ] = quarterly_df.groupby( 'permno' )[ 'retadj' ].shift( -1 )

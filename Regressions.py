@@ -17,7 +17,7 @@ res = fm_b.fit(cov_type='kernel')
 r2_fm = data.groupby('jdate').apply(fm, var=['GP','logbm','logme','reversal','mom']).mean()
 print(res.summary)
 
-fm2 = FamaMacBeth.from_formula( "er ~ 1 +logbm+logme+reversal+mom", data=data)
+fm2 = FamaMacBeth.from_formula( "er ~ 1 + logbm + logme + reversal + mom", data=data)
 res2 = fm2.fit(cov_type='kernel')
 r2_fm2 = data.groupby('jdate').apply(fm, var=['logbm','logme','reversal','mom']).mean()
 print(res2.summary)
