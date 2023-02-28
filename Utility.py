@@ -4,9 +4,6 @@
 
 import numpy as np 
 import pandas as pd
-import wrds
-from dateutil.relativedelta import *
-from pandas.tseries.offsets import *
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 

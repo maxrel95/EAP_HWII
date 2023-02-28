@@ -3,3 +3,4 @@
 *.tex
 *.pyc
 10001.pkl
+venv/
