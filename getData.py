@@ -381,6 +381,7 @@ quarterly_df['szport'] = np.where( (quarterly_df['beme']>0) & (quarterly_df['me'
 quarterly_df.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
 
 quarterly_df[ 'logme1' ] = quarterly_df.groupby( 'permno' )[ 'logme' ].shift( 4 )
+quarterly_df[ 'logme2' ] = quarterly_df.groupby( 'permno' )[ 'logme' ].shift( 6 )
 
 
 quarterly_df[ 'retadj_l1' ] = quarterly_df.groupby( 'permno' )[ 'retadj' ].shift( -1 )
