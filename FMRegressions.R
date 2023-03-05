@@ -8,7 +8,10 @@ library( plm )
 library( stargazer )
 library(lmtest)
 library(sandwich)
+library( reticulate )
 
+#pd <- import("pandas")
+#pickle_data <- pd$read_pickle("dataset.pickle")
 
 dataTable = as.data.frame( fread( "Data/benchmark.csv" ) ) # import data
 dataTable$er = dataTable$er*100
@@ -101,7 +104,7 @@ stargazer( fm_a_full_er, fm_a_full_ff6, fm_q_full, fm_a_indu_er, out = 'results/
            covariate.labels=c("Gross Profit","Asset Growth", "log(BE/ME)","log(ME)","r(1,1)","r(12,2)"))
 
 stargazer( fm_a_full_er, fm_a_large_er, fm_a_small_er, fm_a_micro_er, out = 'results/fmregressionSize.tex',
-           digits = 2, styles = 'aer', report = 'vc*t',
+           digits = 2, report = 'vc*t',
            title="Regression Results", align=TRUE, dep.var.labels=c("All","Large", "Small", "Micro"),
            covariate.labels=c("Gross Profit","Asset Growth", "log(BE/ME)","log(ME)","r(1,1)","r(12,2)"))
 
@@ -140,13 +143,13 @@ logme_mom <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + logme*mom,
 reversal_mom <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + reversal*mom, interaction_df, index=c("jdate","permno") )
 
 tstat_int = c(tail(gp_gat$coefficients,1)/sqrt(tail(diag(gp_gat$vcov),1)), tail(gp_logbm$coefficients,1)/sqrt(tail(diag(gp_logbm$vcov),1)),
-  tail(gp_logme$coefficients,1)/sqrt(tail(diag(gp_logme$vcov),1)), tail(gp_reversal$coefficients,1)/sqrt(tail(diag(gp_reversal$vcov),1)),
-  tail(gp_mom$coefficients,1)/sqrt(tail(diag(gp_mom$vcov),1)), tail(gat_logbm$coefficients,1)/sqrt(tail(diag(gat_logbm$vcov),1)),
-  tail(gat_logme$coefficients,1)/sqrt(tail(diag(gat_logme$vcov),1)), tail(gat_reversal$coefficients,1)/sqrt(tail(diag(gat_reversal$vcov),1)), 
-  tail(gat_mom$coefficients,1)/sqrt(tail(diag(gat_mom$vcov),1)), tail(logbm_logme$coefficients,1)/sqrt(tail(diag(logbm_logme$vcov),1)),
-  tail(logbm_reversal$coefficients,1)/sqrt(tail(diag(logbm_reversal$vcov),1)), tail(logbm_mom$coefficients,1)/sqrt(tail(diag(logbm_mom$vcov),1)), 
-  tail(logme_reversal$coefficients,1)/sqrt(tail(diag(logme_reversal$vcov),1)), tail(logme_mom$coefficients,1)/sqrt(tail(diag(logme_mom$vcov),1)),
-  tail(reversal_mom$coefficients,1)/sqrt(tail(diag(reversal_mom$vcov),1)) )
+              tail(gp_logme$coefficients,1)/sqrt(tail(diag(gp_logme$vcov),1)), tail(gp_reversal$coefficients,1)/sqrt(tail(diag(gp_reversal$vcov),1)),
+              tail(gp_mom$coefficients,1)/sqrt(tail(diag(gp_mom$vcov),1)), tail(gat_logbm$coefficients,1)/sqrt(tail(diag(gat_logbm$vcov),1)),
+              tail(gat_logme$coefficients,1)/sqrt(tail(diag(gat_logme$vcov),1)), tail(gat_reversal$coefficients,1)/sqrt(tail(diag(gat_reversal$vcov),1)), 
+              tail(gat_mom$coefficients,1)/sqrt(tail(diag(gat_mom$vcov),1)), tail(logbm_logme$coefficients,1)/sqrt(tail(diag(logbm_logme$vcov),1)),
+              tail(logbm_reversal$coefficients,1)/sqrt(tail(diag(logbm_reversal$vcov),1)), tail(logbm_mom$coefficients,1)/sqrt(tail(diag(logbm_mom$vcov),1)), 
+              tail(logme_reversal$coefficients,1)/sqrt(tail(diag(logme_reversal$vcov),1)), tail(logme_mom$coefficients,1)/sqrt(tail(diag(logme_mom$vcov),1)),
+              tail(reversal_mom$coefficients,1)/sqrt(tail(diag(reversal_mom$vcov),1)) )
 tstat_int[order(abs(tstat_int), decreasing=TRUE)[1:5]]
 
 mom_interaction <- pmg(er ~ 1 + GP + gat + logbm + logme + reversal + mom + reversal*mom + mom*logbm,
@@ -177,7 +180,7 @@ stargazer( mom_interaction, bm_interaction, all_interaction,  out = 'results/int
            title="Regression with Interaction Results", digits.extra = 1,
            align=TRUE, dep.var.labels=c("ER"), styles = 'aer', report = 'vc*t',
            covariate.labels=c("Gross Profit","Asset Growth", "log(BE/ME)","log(ME)","$r_{1,1}$","$r_{12,2}$",
-                               "$r_{12,2}$ X $r_{1,1}$","$r_{12,2}$ X log(BE/ME)","log(BE/ME) X log(ME)"))
+                              "$r_{12,2}$ X $r_{1,1}$","$r_{12,2}$ X log(BE/ME)","log(BE/ME) X log(ME)"))
 
 stargazer( mom_interaction_nomic, bm_interaction_nomic, all_interaction_nomic,  out = 'results/interactions_mic.tex', digits = 2,
            title="Regression with Interaction Results", digits.extra = 1,
