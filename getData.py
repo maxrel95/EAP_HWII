@@ -1,6 +1,7 @@
 # Author : Maxime Borel 
 # Class : Empirical Asset Pricing 
 # Homework II
+# TODO: change export csv to pickel and change R code to read the pickel
 
 import numpy as np 
 import pandas as pd
@@ -428,3 +429,4 @@ all_df_q = pd.merge( all_df_q, bb, how='inner', on=['permno', 'jdate'] )
 all_df_q.sort_values( by=['permno', 'jdate'], inplace=True )
 all_df_q.to_csv( 'Data/all_df_q.csv' )
 
+print( 'The script has been succesfully executed' )
