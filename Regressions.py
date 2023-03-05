@@ -124,3 +124,4 @@ stats_all = all_df[ ['GP', 'gat', 'logbm', 'logme', 'reversal', 'mom']].describe
     percentiles=[ .01, .25, .5, .75, .99 ]).T.round( 3 ).drop('count', axis=1)
 stats_all.round(2).to_latex( 'results/statistics.tex' )
 
+print( 'The script has been succesfully executed' )
