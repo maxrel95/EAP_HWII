@@ -9,7 +9,6 @@ from Utility import fm, fm_iteraction
 
 data = pd.read_csv('Data/benchmark.csv')
 data['jdate'] = pd.to_datetime( data['jdate'] )
-pd.to_datetime( data['jdate'].unique()).sort_values()
 data.set_index( [ 'permno', 'jdate' ], inplace=True )
 data[ 'er' ] = data[ 'er' ] *100
 

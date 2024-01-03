@@ -18,7 +18,7 @@ def ff3model( df ):
         return temp
     x = df[['mktrf', 'smb', 'hml']]
     x = sm.add_constant( x )
-    model = sm.OLS( y, x)
+    model = sm.OLS(y.astype('float'), x.astype('float') )
     res = model.fit()
     resid = res.resid + res.params[ 0 ]
     eps =  pd.concat( [ df[['permno', 'jdate']], resid], axis=1)
@@ -36,7 +36,7 @@ def ff6model( df,  ):
         return temp
     x = df[['mktrf', 'smb', 'hml', 'rmw', 'cma', 'umd']]
     x = sm.add_constant( x )
-    model = sm.OLS( y, x)
+    model = sm.OLS( y.astype('float'), x.astype('float') )
     res = model.fit()
     resid = res.resid + res.params[ 0 ]
     eps =  pd.concat( [ df[['permno', 'jdate']], resid], axis=1)

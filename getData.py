@@ -11,7 +11,7 @@ from pandas.tseries.offsets import *
 from Utility import *
 
 
-db = wrds.Connection( wrds_username = 'maxrel95' )
+db = wrds.Connection()
 
 # Annual fundamental data request
 compustat_annual = db.raw_sql("""
@@ -198,6 +198,7 @@ df = df[((df['exchcd'] == 1) | (df['exchcd'] == 2) | (df['exchcd'] == 3)) &
 df[ 'beme' ] = df[ 'be' ] / df[ 'lag6_me' ]
 df[ 'logbm' ] = np.log( df[ 'beme' ] )
 df[ 'logme' ] = np.log( df[ 'me' ] )
+df.index.names = ["id", None]
 df.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
 
 annual_df = df[
@@ -253,8 +254,10 @@ annual_df_noFin_trim = trim( annual_df_noFin )
 _ff = db.get_table( library='ff', table='fivefactors_monthly' )
 _ff = _ff[ ['date', 'mktrf', 'smb', 'hml', 'rmw', 'cma', 'umd', 'rf'] ]
 _ff['jdate'] = _ff['date'] + MonthEnd( 0 )
-_ff[ 'rfl1' ] = _ff['rf'].shift( -1 ) 
-_ff[ ['mktrf', 'smb', 'hml', 'rmw', 'cma', 'umd'] ] = _ff[ ['mktrf', 'smb', 'hml', 'rmw', 'cma', 'umd'] ].shift( -1 ) 
+_ff['jdate'] = _ff['jdate'].astype('datetime64[ns]')
+_ff[ 'rfl1' ] = _ff['rf'].shift( -1 )
+_ff[ ['mktrf', 'smb', 'hml', 'rmw', 'cma', 'umd'] ] = _ff[ ['mktrf', 'smb', 'hml', 'rmw', 'cma', 'umd'] ].shift( -1 )
+_ff.loc[:,~_ff.columns.isin(["jdate", "date"])] = _ff.loc[:,~_ff.columns.isin(["jdate", "date"])].astype('float') 
 
 # benchmark
 benchmark = annual_df_noFin_trim[ ( annual_df_noFin_trim['jdate']>='1963-07-31') &  (annual_df_noFin_trim['jdate']<='2013-12-31') ]
@@ -306,7 +309,7 @@ compustat_q = db.raw_sql("""
                     and datafmt='STD'
                     and popsrc='D'
                     and consol='C'
-                    and datadate >= '01/01/1960'
+                    and datadate >= '01/01/1957'
                     """, date_cols=['datadate'])
 
 compustat_q[ 'datadate' ] = compustat_q[ 'datadate' ] + MonthEnd( 0 )
@@ -358,6 +361,7 @@ data_rawq = data_rawq[((data_rawq['exchcd'] == 1) | (data_rawq['exchcd'] == 2) |
 data_rawq[ 'beme' ] = data_rawq[ 'beq' ] / data_rawq[ 'lag4_me' ]
 data_rawq[ 'logbm' ] = np.log( data_rawq[ 'beme' ] )
 data_rawq[ 'logme' ] = np.log( data_rawq[ 'me' ] )
+data_rawq.index.names = ["id", None]
 data_rawq.sort_values( by=[ 'permno', 'jdate' ], inplace=True )
 
 quarterly_df = data_rawq[
